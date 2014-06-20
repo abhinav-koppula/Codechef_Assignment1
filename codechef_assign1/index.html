@@ -1,0 +1,298 @@
+<!DOCTYPE html>
+<html>
+<head>
+<title>CodeChef Assignment 1</title>
+<script type="text/javascript">
+var Myapp = {};
+
+Myapp.hash_map = new Object();
+Myapp.all_tweets = [];
+Myapp.checked_users = [];
+
+Myapp.create_xhr = function() {
+	var xhr;
+	if (window.XMLHttpRequest)
+  	{// code for IE7+, Firefox, Chrome, Opera, Safari
+  		xhr=new XMLHttpRequest();
+  	}
+	else
+  	{// code for IE6, IE5
+  		xhr=new ActiveXObject("Microsoft.XMLHTTP");
+  	}
+  	return xhr;
+}
+
+Myapp.remove_all_children = function(parentNode) {
+	while (parentNode.firstChild) {
+   		parentNode.removeChild(parentNode.firstChild);
+	}
+}
+
+Myapp.set_new_hashtags = function(updated_set_hashtags) {
+	var container = document.getElementById("hash_tags");
+ 	if(Object.keys(updated_set_hashtags).length > 0) {
+ 		Myapp.remove_all_children(container);
+
+		for(var h in updated_set_hashtags) {
+			var li = document.createElement("li");
+			li.setAttribute('id', h);
+			li.setAttribute('class', 'hashtag')
+			li.appendChild(document.createTextNode('#'+ h + '(' + updated_set_hashtags[h] + ')'));
+			li.onclick = Myapp.attach(li.id);
+		
+			container.appendChild(li);
+		}
+ 	}
+}
+
+Myapp.update_feed_with_hashtweets = function(tag) {
+	var updated_set_hashtags = {};
+	var feed_container = document.getElementById("tweets_of_users");
+	Myapp.remove_all_children(feed_container);
+	
+	var hashtweet = Myapp.hash_map[tag];
+	for(var i=0; i<hashtweet.length; i++) {
+		for(var t in Myapp.all_tweets){
+			if(Myapp.all_tweets[t].id_str == hashtweet[i].tweet.id_str && Myapp.checked_users.indexOf(Myapp.all_tweets[t].user.id_str)!= -1) {
+				var tweetContainer = Myapp.buildTweetContainer(Myapp.all_tweets[t].user, Myapp.all_tweets[t]);
+				feed_container.appendChild(tweetContainer);
+
+				var entities_hashtags = hashtweet[i].tweet.entities.hashtags;
+				
+				for(var entity in entities_hashtags) {
+					if(!(updated_set_hashtags[entities_hashtags[entity].text])) {
+						updated_set_hashtags[entities_hashtags[entity].text] = 1;
+					} else {
+						updated_set_hashtags[entities_hashtags[entity].text]++;
+					}
+				}
+			}
+		}
+	}
+	Myapp.set_new_hashtags(updated_set_hashtags);
+}
+
+Myapp.attach = function(hashtag) {
+	return function() {
+		Myapp.update_feed_with_hashtweets(hashtag);
+	};
+}
+
+Myapp.dateComparator = function(t1, t2) {
+	var dateOne = new Date(t1.created_at);
+	var dateTwo = new Date(t2.created_at);
+	
+	if(dateOne < dateTwo) return 1;
+	else if(dateOne == dateTwo) return 0;
+	else return -1;
+}
+
+Myapp.update_hashtags_container = function() {
+	var container = document.getElementById("hash_tags");
+	Myapp.remove_all_children(container);
+	
+	for(var h in Myapp.hash_map) {
+		var li = document.createElement("li");
+		li.setAttribute('id', h);
+		li.setAttribute('class', 'hashtag')
+		li.appendChild(document.createTextNode('#'+ h + '(' + Myapp.hash_map[h].length + ')'));
+		li.onclick = Myapp.attach(li.id);
+		
+		container.appendChild(li);
+	}
+}
+
+Myapp.get_feed = function(obj) {
+	var errors = false;
+	var xhr = Myapp.create_xhr();
+	var url = 'api.php?query=feed&screen_name='+obj.screen_name+'&count=20';
+	xhr.onreadystatechange = function() {
+		if(xhr.readyState == 4 && xhr.status == 200) {
+			var json = xhr.responseText;
+			var json_obj = JSON.parse(json);
+		
+			for(var t in json_obj) {
+				Myapp.all_tweets.push(json_obj[t]);
+			}
+			Myapp.all_tweets = Myapp.all_tweets.sort(Myapp.dateComparator);
+
+			for(var t in json_obj) {
+				if(json_obj[t].entities.hashtags.length > 0) {
+					var hashtags = json_obj[t].entities.hashtags;
+					for(var h in hashtags) {
+						var array;	
+						if(!(Myapp.hash_map[hashtags[h].text])) {
+							array = [];
+						} else {
+							array = Myapp.hash_map[hashtags[h].text];
+						}
+						
+						obj_tweet_parent = new Object();
+						obj_tweet_parent['tweet'] = json_obj[t];
+						obj_tweet_parent['parent'] = json_obj[t].user;
+
+						array.push(obj_tweet_parent);
+						Myapp.hash_map[hashtags[h].text] = array;
+					}
+				}
+			}
+			Myapp.update_hashtags_container();		
+		}
+		
+	}
+	xhr.open("GET", url, true)
+	xhr.send();
+}
+
+Myapp.update_feed_container = function() {
+	var feed_container = document.getElementById("tweets_of_users");
+	var updated_set_hashtags = {};
+	Myapp.remove_all_children(feed_container);
+		
+	for(var t in Myapp.all_tweets) {
+		if(Myapp.checked_users.indexOf(Myapp.all_tweets[t].user.id_str) > -1) {
+			var tweetContainer = Myapp.buildTweetContainer(Myapp.all_tweets[t].user, Myapp.all_tweets[t]);
+			feed_container.appendChild(tweetContainer);
+			var entities_hashtags = Myapp.all_tweets[t].entities.hashtags;
+			
+			for(var entity in entities_hashtags) {
+				if(!(updated_set_hashtags[entities_hashtags[entity].text])) {
+					updated_set_hashtags[entities_hashtags[entity].text] = 1;
+				} else {
+					updated_set_hashtags[entities_hashtags[entity].text]++;
+				}
+			}
+		}
+	}
+	
+	Myapp.set_new_hashtags(updated_set_hashtags);
+
+	if(Myapp.checked_users.length == 0) {
+		Myapp.update_hashtags_container();
+	}
+}
+
+Myapp.add_user = function(obj) {
+	Myapp.get_feed(obj);
+
+	var ulel = document.getElementById("list_of_users");
+	var liel = document.createElement("li");
+	img=document.createElement("img");
+	img.setAttribute('src', obj.profile_image_url);
+	liel.appendChild(img);
+	var checkbox = document.createElement('input');
+	checkbox.type = "checkbox";
+
+	
+	checkbox.addEventListener('click', function() {
+		if(this.checked) {
+			Myapp.checked_users.push(obj.id_str);
+		} else {
+			var index = Myapp.checked_users.indexOf(obj.id_str);
+			if(index > -1) {
+				Myapp.checked_users.splice(index, 1);
+			}
+		}
+        Myapp.update_feed_container();
+    });
+
+	var label = document.createElement('label')
+	label.htmlFor = obj.id;
+	label.appendChild(document.createTextNode(obj.name));
+
+	liel.appendChild(label);
+	liel.appendChild(checkbox);
+	
+	ulel.appendChild(liel);
+}
+
+Myapp.user_lookup = function(screen_name) {
+	var errors = false;
+	var xhr = Myapp.create_xhr();
+	var url = 'api.php?query=lookup&screen_name='+screen_name;
+	xhr.onreadystatechange = function() {
+		if(xhr.readyState == 4) {
+			var json = xhr.responseText;
+			var json_obj = JSON.parse(json);
+			for(var key in json_obj)
+			{
+				if(key=='errors') {
+					errors = true;
+					break;
+				}
+			}
+			if(errors)
+			{
+				alert("User with screen name "+screen_name+" does not exist");
+			} else {
+				Myapp.add_user(json_obj[0]);
+			}
+		}
+	}
+	xhr.open("GET", url, true);
+	xhr.send();
+}
+
+Myapp.check_user = function() {
+	var name = document.getElementById("twit_screen_name").value;
+	if(name!="")
+	{
+		Myapp.user_lookup(name);
+	}
+}
+
+Myapp.buildTweetContainer = function(userObj, tweetObj) {
+	var outerdiv = document.createElement('div');
+	outerdiv.setAttribute('class', 'tweetcontainer');
+	outerdiv.setAttribute('rel', userObj.id_str);
+
+	var prof_img = document.createElement('img');
+	prof_img.setAttribute('src', userObj.profile_image_url);
+	
+	var tweetname = document.createElement('div');
+	tweetname.setAttribute('class', 'tweetname');
+	tweetname.appendChild(document.createTextNode(userObj.name));
+
+	var tweetbody = document.createElement('div');
+	tweetbody.setAttribute('class', 'tweetbody');
+	tweetbody.setAttribute('id', tweetObj.id_str);
+	tweetbody.appendChild(document.createTextNode(tweetObj.text));
+
+	var timestamp = document.createElement('div');
+	timestamp.setAttribute('class', 'timestamp');
+	timestamp.appendChild(document.createTextNode(tweetObj.created_at))
+	
+	outerdiv.appendChild(prof_img);
+	outerdiv.appendChild(tweetname);
+	outerdiv.appendChild(tweetbody);
+	outerdiv.appendChild(timestamp);
+
+	return outerdiv;
+}
+</script>
+
+<link rel="stylesheet" href='style.css' type='text/css' />
+</head>
+
+<body>
+	<div id="container">
+		<div id='side'>
+			<input type="text" placeholder="search" name="twit_screen_name" id="twit_screen_name" />
+			<input type="button" value="Add" name="add_user" id = "add_twit_user" onclick = "Myapp.check_user()" />
+			<input type="button" value="List All Tags" name="list_all_tags" id="list_all_tags" onclick="Myapp.update_hashtags_container()" />
+			<br/>
+			<div>
+				<ul id = "list_of_users" >
+				</ul>
+			</div>
+		</div>
+		<div id='content'>
+			<ul id = "hash_tags">
+			</ul>
+			<div id="tweets_of_users">
+			</div>
+			
+		</div>
+	</div>
+</body>
+</html>

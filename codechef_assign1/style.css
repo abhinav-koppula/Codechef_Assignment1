@@ -1,0 +1,65 @@
+#side {
+	clear: left;
+	float: left;
+	width: 20%;
+	margin: 0 0 0 10px;
+	position: absolute;
+}
+
+#content {
+	float: right;
+	width: 70%;
+	margin: 0 10px 0 0;
+}
+
+#list_of_users {
+	list-style-type: none;
+	padding: 0px;
+	margin: 0px;
+}
+
+#hash_tags {
+	list-style-type: none;
+}
+
+#hash_tags li {
+	padding: 5px;
+	display: inline-block;
+	cursor: pointer;
+}
+
+#tweets_of_users {
+	padding: 5px;
+}
+
+.tweetcontainer {
+	padding: 5px;
+	height: 50px;
+	position: relative;
+}
+
+.tweetcontainer img {
+	position: absolute;
+	float:left;
+}
+
+.tweetname {
+	padding: 5px;
+
+	font-weight: bold;
+	position: absolute;
+	top:0px;
+	left: 70px;
+}
+
+.tweetbody {
+	padding: 5px;
+	
+	position: absolute;
+	bottom: 0px;
+	left: 70px;
+}
+
+.timestamp {
+	float:right;
+}
